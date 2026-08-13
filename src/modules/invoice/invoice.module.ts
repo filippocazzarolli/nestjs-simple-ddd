@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { InvoiceController } from './presentation/invoice.controller';
-import { InvoiceService } from './application/services/invoice.service';
+import { CreateInvoiceHandler } from './application/commands/create-invoice.handler';
+import { GetInvoiceHandler } from './application/queries/get-invoice.handler';
+import { ListInvoicesHandler } from './application/queries/list-invoices.handler';
 import { ID_GENERATOR } from './application/ports/id-generator';
 import { INVOICE_REPOSITORY } from './application/ports/invoice.repository';
 import { UuidGenerator } from './infrastructure/id/uuid-generator';
@@ -15,7 +17,12 @@ import { InMemoryInvoiceRepository } from './persistence/repositories/in-memory-
 @Module({
   controllers: [InvoiceController],
   providers: [
-    InvoiceService,
+    // command side
+    CreateInvoiceHandler,
+    // query side
+    GetInvoiceHandler,
+    ListInvoicesHandler,
+    // adapters
     {
       provide: INVOICE_REPOSITORY,
       useClass: InMemoryInvoiceRepository,

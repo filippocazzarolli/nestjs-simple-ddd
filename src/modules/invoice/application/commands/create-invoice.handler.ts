@@ -1,42 +1,36 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CreateInvoiceDto } from '../dto/create-invoice.dto';
 import { Invoice } from '../../domain/entities/invoice.entity';
-import { InvoiceNotFoundError } from '../../domain/errors/invoice.error';
 import { ID_GENERATOR } from '../ports/id-generator';
 import { INVOICE_REPOSITORY } from '../ports/invoice.repository';
+import { CreateInvoiceCommand } from './create-invoice.command';
 // `import type` is mandatory here: these are interfaces, and they would
 // otherwise show up in the metadata emitted by the decorator
 // (isolatedModules + emitDecoratorMetadata).
 import type { IdGenerator } from '../ports/id-generator';
 import type { InvoiceRepository } from '../ports/invoice.repository';
 
+/**
+ * Command side: the only place in the module where an aggregate is built and
+ * persisted. Invariants live in `Invoice.create()`, not here — this handler
+ * orchestrates I/O and nothing else.
+ */
 @Injectable()
-export class InvoiceService {
+export class CreateInvoiceHandler {
   constructor(
     @Inject(INVOICE_REPOSITORY)
-    private readonly invoiceRepository: InvoiceRepository,
+    private readonly invoices: InvoiceRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
   ) {}
 
-  async createInvoice(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
+  async execute(command: CreateInvoiceCommand): Promise<Invoice> {
     const invoice = Invoice.create({
+      // The identity is server-generated through a port, never accepted from
+      // the client.
       id: this.idGenerator.generate(),
-      amount: createInvoiceDto.amount,
-      customerName: createInvoiceDto.customerName,
+      amount: command.amount,
+      customerName: command.customerName,
     });
-    return this.invoiceRepository.save(invoice);
-  }
-
-  async getInvoice(id: string): Promise<Invoice> {
-    const invoice = await this.invoiceRepository.findById(id);
-    if (invoice === null) {
-      throw new InvoiceNotFoundError(id);
-    }
-    return invoice;
-  }
-
-  async listInvoices(): Promise<Invoice[]> {
-    return this.invoiceRepository.findAll();
+    return this.invoices.save(invoice);
   }
 }

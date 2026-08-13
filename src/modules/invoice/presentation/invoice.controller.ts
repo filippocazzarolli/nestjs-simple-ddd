@@ -1,25 +1,40 @@
 import { Body, Controller, Get, Param, Post, UseFilters } from '@nestjs/common';
-import { InvoiceService } from '../application/services/invoice.service';
-import { CreateInvoiceDto } from '../application/dto/create-invoice.dto';
+import { Invoice } from '../domain/entities/invoice.entity';
+import { CreateInvoiceHandler } from '../application/commands/create-invoice.handler';
+import { GetInvoiceHandler } from '../application/queries/get-invoice.handler';
+import { ListInvoicesHandler } from '../application/queries/list-invoices.handler';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { InvoiceExceptionFilter } from './invoice-exception.filter';
 
+/**
+ * The injected handlers double as an index of the module's use cases: one
+ * dependency per use case, resolved by the compiler rather than by a runtime
+ * dispatcher.
+ */
 @Controller('invoices')
 @UseFilters(InvoiceExceptionFilter)
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly createInvoice: CreateInvoiceHandler,
+    private readonly listInvoices: ListInvoicesHandler,
+    private readonly getInvoice: GetInvoiceHandler,
+  ) {}
 
   @Post()
-  async create(@Body() createInvoiceDto: CreateInvoiceDto) {
-    return this.invoiceService.createInvoice(createInvoiceDto);
+  create(@Body() dto: CreateInvoiceDto): Promise<Invoice> {
+    return this.createInvoice.execute({
+      customerName: dto.customerName,
+      amount: dto.amount,
+    });
   }
 
   @Get()
-  async findAll() {
-    return this.invoiceService.listInvoices();
+  findAll(): Promise<Invoice[]> {
+    return this.listInvoices.execute();
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.invoiceService.getInvoice(id);
+  findOne(@Param('id') id: string): Promise<Invoice> {
+    return this.getInvoice.execute(id);
   }
 }
