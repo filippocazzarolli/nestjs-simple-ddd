@@ -111,8 +111,8 @@ route si registrano nell'ordine dei metodi, e invertirle fa matchare `summary` c
 (404 `InvoiceNotFoundError`). C'è un e2e che lo presidia. Lo store è in-memory, i dati
 spariscono a ogni restart.
 
-Il razionale completo della separazione CQRS, con i trade-off e il piano seguito, sta in
-`docs/cqrs-case-study.md`.
+Il razionale della separazione CQRS, con i trade-off, sta in
+`src/modules/invoice/README.md`.
 
 ## Convenzioni
 

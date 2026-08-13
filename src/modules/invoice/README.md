@@ -3,7 +3,9 @@
 Modulo DDD con application layer separato in **command side** e **query side** (CQRS senza
 message bus: gli handler sono iniettati direttamente, la separazione è nel design).
 
-Il razionale completo, i trade-off e il piano seguito stanno in `docs/cqrs-case-study.md`.
+Il segnale che ha motivato la separazione: `GET /invoices/summary`, cioè **la prima lettura
+che non è un aggregato**. Un riepilogo per cliente non ha identità, non ha ciclo di vita e
+non ha invarianti da proteggere — non esiste un modo onesto di farlo passare per l'entità.
 
 ## Endpoint
 
@@ -67,6 +69,21 @@ invoice.module.ts                         composition root: port → adapter
 3. La mappatura entità → view sta nell'adapter, che sa da dove viene il dato.
 4. Le query non hanno invarianti: nessun `Invoice.create()`, lista vuota invece di errore.
 5. Due port non sono due database: lo store è uno, le letture sono fortemente consistenti.
+
+## Trade-off, dichiarati
+
+- **Più file per lo stesso comportamento.** Su quattro use case il rapporto è sfavorevole; si
+  inverte quando crescono. La separazione va adottata al segnale (la prima lettura che non è
+  un aggregato), non per default: su un CRUD dove il modello letto resterà per sempre uguale
+  a quello scritto, il repository unico è la scelta giusta e questa struttura è cerimonia.
+- **`InvoiceView` duplica `Invoice` campo per campo.** Non è violazione di DRY: sono due
+  contratti con due ragioni diverse di cambiare. Comprimerli è il problema da cui si parte.
+- **Un salto in più leggendo il codice**: controller → handler → port → adapter.
+- **Nessun guadagno di performance oggi.** Su una `Map` l'aggregazione in JS vale qualsiasi
+  alternativa; il guadagno è di opzionalità futura.
+- **Nessuna eventual consistency**, perché lo store è uno solo. Arriverebbe separando
+  fisicamente read e write (proiezioni asincrone), con il suo prezzo: 404 ambigui, test da
+  riscrivere, riconciliazione. Fuori scope.
 
 ## Sostituire l'in-memory con un DB reale
 
