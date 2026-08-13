@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { InvoiceController } from './presentation/invoice.controller';
 import { CreateInvoiceHandler } from './application/commands/create-invoice.handler';
 import { GetInvoiceHandler } from './application/queries/get-invoice.handler';
+import { GetInvoiceSummaryHandler } from './application/queries/get-invoice-summary.handler';
 import { ListInvoicesHandler } from './application/queries/list-invoices.handler';
 import { ID_GENERATOR } from './application/ports/id-generator';
 import { INVOICE_REPOSITORY } from './application/ports/invoice.repository';
@@ -25,6 +26,7 @@ import { InMemoryInvoiceQueryRepository } from './persistence/repositories/in-me
     // query side
     GetInvoiceHandler,
     ListInvoicesHandler,
+    GetInvoiceSummaryHandler,
     // adapters: one store, two ports over it. Replacing the in-memory store
     // with Postgres can now be done one side at a time.
     InMemoryInvoiceStore,

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetInvoiceHandler } from './get-invoice.handler';
+import { InvoiceSummaryView } from './read-models/invoice-summary.view';
 import { InvoiceView } from './read-models/invoice.view';
 import { InvoiceNotFoundError } from '../../domain/errors/invoice.error';
 import {
@@ -20,6 +21,10 @@ class FakeInvoiceQueryRepository implements InvoiceQueryRepository {
 
   findAll(): Promise<InvoiceView[]> {
     return Promise.resolve([...this.views.values()]);
+  }
+
+  summarizeByCustomer(): Promise<InvoiceSummaryView[]> {
+    return Promise.resolve([]);
   }
 }
 

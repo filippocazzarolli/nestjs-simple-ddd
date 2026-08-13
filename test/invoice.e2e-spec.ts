@@ -10,6 +10,14 @@ interface InvoiceBody {
   customerName: string;
 }
 
+interface SummaryBody {
+  customerName: string;
+  invoiceCount: number;
+  totalAmount: number;
+  averageAmount: number;
+  maxAmount: number;
+}
+
 describe('InvoiceController (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -87,5 +95,107 @@ describe('InvoiceController (e2e)', () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  describe('GET /invoices/summary', () => {
+    const getSummary = (queryString = '') =>
+      request(app.getHttpServer()).get(`/invoices/summary${queryString}`);
+
+    const givenInvoices = async () => {
+      await createInvoice({ amount: 100, customerName: 'ACME' });
+      await createInvoice({ amount: 50, customerName: 'ACME' });
+      await createInvoice({ amount: 60, customerName: 'Globex' });
+    };
+
+    it('responds 200 with an empty list when there is no invoice', async () => {
+      const response = await getSummary();
+
+      expect(response.status).toBe(200);
+      expect(response.body as SummaryBody[]).toEqual([]);
+    });
+
+    it('rolls up per customer, ordered by total desc', async () => {
+      await givenInvoices();
+
+      const response = await getSummary();
+
+      expect(response.status).toBe(200);
+      expect(response.body as SummaryBody[]).toEqual([
+        {
+          customerName: 'ACME',
+          invoiceCount: 2,
+          totalAmount: 150,
+          averageAmount: 75,
+          maxAmount: 100,
+        },
+        {
+          customerName: 'Globex',
+          invoiceCount: 1,
+          totalAmount: 60,
+          averageAmount: 60,
+          maxAmount: 60,
+        },
+      ]);
+    });
+
+    it('filters by customerName', async () => {
+      await givenInvoices();
+
+      const response = await getSummary('?customerName=Globex');
+
+      expect(response.status).toBe(200);
+      expect(
+        (response.body as SummaryBody[]).map((s) => s.customerName),
+      ).toEqual(['Globex']);
+    });
+
+    it('applies minAmount to individual invoices', async () => {
+      await givenInvoices();
+
+      const response = await getSummary('?minAmount=60');
+
+      // ACME keeps only its 100 invoice; the 50 one is excluded before the
+      // roll-up.
+      expect(response.status).toBe(200);
+      expect(response.body as SummaryBody[]).toEqual([
+        {
+          customerName: 'ACME',
+          invoiceCount: 1,
+          totalAmount: 100,
+          averageAmount: 100,
+          maxAmount: 100,
+        },
+        {
+          customerName: 'Globex',
+          invoiceCount: 1,
+          totalAmount: 60,
+          averageAmount: 60,
+          maxAmount: 60,
+        },
+      ]);
+    });
+
+    it('rejects a non-numeric minAmount with 400', async () => {
+      const response = await getSummary('?minAmount=abc');
+
+      expect(response.status).toBe(400);
+    });
+
+    it('rejects an undeclared query param with 400', async () => {
+      const response = await getSummary('?nonEsiste=1');
+
+      expect(response.status).toBe(400);
+    });
+
+    it('is not swallowed by the :id route', async () => {
+      // Guards the declaration order in the controller: were @Get('summary')
+      // below @Get(':id'), this would answer 404 InvoiceNotFoundError.
+      const response = await getSummary();
+
+      expect(response.status).not.toBe(404);
+      expect(response.body as Record<string, unknown>).not.toMatchObject({
+        error: 'InvoiceNotFoundError',
+      });
+    });
   });
 });

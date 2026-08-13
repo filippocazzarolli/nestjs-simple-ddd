@@ -1,9 +1,20 @@
-import { Body, Controller, Get, Param, Post, UseFilters } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseFilters,
+} from '@nestjs/common';
 import { CreateInvoiceHandler } from '../application/commands/create-invoice.handler';
 import { GetInvoiceHandler } from '../application/queries/get-invoice.handler';
+import { GetInvoiceSummaryHandler } from '../application/queries/get-invoice-summary.handler';
 import { ListInvoicesHandler } from '../application/queries/list-invoices.handler';
+import { InvoiceSummaryView } from '../application/queries/read-models/invoice-summary.view';
 import { InvoiceView } from '../application/queries/read-models/invoice.view';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { InvoiceSummaryQueryDto } from './dto/invoice-summary-query.dto';
 import { InvoiceExceptionFilter } from './invoice-exception.filter';
 
 /**
@@ -17,6 +28,7 @@ export class InvoiceController {
   constructor(
     private readonly createInvoice: CreateInvoiceHandler,
     private readonly listInvoices: ListInvoicesHandler,
+    private readonly getInvoiceSummary: GetInvoiceSummaryHandler,
     private readonly getInvoice: GetInvoiceHandler,
   ) {}
 
@@ -31,6 +43,22 @@ export class InvoiceController {
   @Get()
   findAll(): Promise<InvoiceView[]> {
     return this.listInvoices.execute();
+  }
+
+  /**
+   * MUST stay above @Get(':id'): routes are registered in declaration order,
+   * so moving it below would make 'summary' match as an :id and answer 404
+   * with `Invoice not found: summary` — a routing bug that reads like a domain
+   * one. There is an e2e test guarding this.
+   */
+  @Get('summary')
+  summary(
+    @Query() query: InvoiceSummaryQueryDto,
+  ): Promise<InvoiceSummaryView[]> {
+    return this.getInvoiceSummary.execute({
+      customerName: query.customerName,
+      minAmount: query.minAmount,
+    });
   }
 
   @Get(':id')
