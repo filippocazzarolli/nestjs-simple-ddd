@@ -20,10 +20,6 @@ class FakeInvoiceRepository implements InvoiceRepository {
   findById(id: string): Promise<Invoice | null> {
     return Promise.resolve(this.invoices.get(id) ?? null);
   }
-
-  findAll(): Promise<Invoice[]> {
-    return Promise.resolve([...this.invoices.values()]);
-  }
 }
 
 /** Test adapter standing in for `infrastructure/`: predictable ids. */
@@ -54,14 +50,12 @@ describe('CreateInvoiceHandler', () => {
     handler = module.get(CreateInvoiceHandler);
   });
 
-  it('assigns the id obtained from the generator and stores the invoice', async () => {
-    const invoice = await handler.execute({
-      amount: 100,
-      customerName: 'ACME',
-    });
+  it('assigns the id obtained from the generator and stores the aggregate', async () => {
+    const view = await handler.execute({ amount: 100, customerName: 'ACME' });
 
-    expect(invoice.id).toBe('inv-1');
-    expect(repository.invoices.get('inv-1')).toBe(invoice);
+    expect(view).toEqual({ id: 'inv-1', amount: 100, customerName: 'ACME' });
+    // What is stored is the entity; what is returned is the view.
+    expect(repository.invoices.get('inv-1')).toBeInstanceOf(Invoice);
   });
 
   it('never reuses the same id across invoices', async () => {

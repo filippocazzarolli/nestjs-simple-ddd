@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Invoice } from '../../domain/entities/invoice.entity';
-import { INVOICE_REPOSITORY } from '../ports/invoice.repository';
-import type { InvoiceRepository } from '../ports/invoice.repository';
+import { INVOICE_QUERY_REPOSITORY } from '../ports/invoice-query.repository';
+import { InvoiceView } from './read-models/invoice.view';
+import type { InvoiceQueryRepository } from '../ports/invoice-query.repository';
 
 /**
  * A query handler with nothing to orchestrate is a pass-through, and that is
@@ -11,11 +11,11 @@ import type { InvoiceRepository } from '../ports/invoice.repository';
 @Injectable()
 export class ListInvoicesHandler {
   constructor(
-    @Inject(INVOICE_REPOSITORY)
-    private readonly invoices: InvoiceRepository,
+    @Inject(INVOICE_QUERY_REPOSITORY)
+    private readonly invoices: InvoiceQueryRepository,
   ) {}
 
-  execute(): Promise<Invoice[]> {
+  execute(): Promise<InvoiceView[]> {
     return this.invoices.findAll();
   }
 }

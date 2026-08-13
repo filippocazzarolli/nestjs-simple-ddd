@@ -1,52 +1,54 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetInvoiceHandler } from './get-invoice.handler';
-import { Invoice } from '../../domain/entities/invoice.entity';
+import { InvoiceView } from './read-models/invoice.view';
 import { InvoiceNotFoundError } from '../../domain/errors/invoice.error';
 import {
-  INVOICE_REPOSITORY,
-  InvoiceRepository,
-} from '../ports/invoice.repository';
+  INVOICE_QUERY_REPOSITORY,
+  InvoiceQueryRepository,
+} from '../ports/invoice-query.repository';
 
-class FakeInvoiceRepository implements InvoiceRepository {
-  readonly invoices = new Map<string, Invoice>();
+/**
+ * Test adapter standing in for the read side: it serves views straight away,
+ * with no entity in sight — which is exactly what the port promises.
+ */
+class FakeInvoiceQueryRepository implements InvoiceQueryRepository {
+  readonly views = new Map<string, InvoiceView>();
 
-  save(invoice: Invoice): Promise<Invoice> {
-    this.invoices.set(invoice.id, invoice);
-    return Promise.resolve(invoice);
+  findById(id: string): Promise<InvoiceView | null> {
+    return Promise.resolve(this.views.get(id) ?? null);
   }
 
-  findById(id: string): Promise<Invoice | null> {
-    return Promise.resolve(this.invoices.get(id) ?? null);
-  }
-
-  findAll(): Promise<Invoice[]> {
-    return Promise.resolve([...this.invoices.values()]);
+  findAll(): Promise<InvoiceView[]> {
+    return Promise.resolve([...this.views.values()]);
   }
 }
 
 describe('GetInvoiceHandler', () => {
   let handler: GetInvoiceHandler;
-  let repository: FakeInvoiceRepository;
+  let repository: FakeInvoiceQueryRepository;
 
   beforeEach(async () => {
-    repository = new FakeInvoiceRepository();
+    repository = new FakeInvoiceQueryRepository();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GetInvoiceHandler,
-        { provide: INVOICE_REPOSITORY, useValue: repository },
+        { provide: INVOICE_QUERY_REPOSITORY, useValue: repository },
       ],
     }).compile();
 
     handler = module.get(GetInvoiceHandler);
   });
 
-  it('returns the stored invoice', async () => {
-    const stored = await repository.save(
-      Invoice.create({ id: 'inv-1', amount: 100, customerName: 'ACME' }),
-    );
+  it('returns the stored view', async () => {
+    const view: InvoiceView = {
+      id: 'inv-1',
+      amount: 100,
+      customerName: 'ACME',
+    };
+    repository.views.set(view.id, view);
 
-    await expect(handler.execute('inv-1')).resolves.toBe(stored);
+    await expect(handler.execute('inv-1')).resolves.toBe(view);
   });
 
   it('throws InvoiceNotFoundError when the id is unknown', async () => {
