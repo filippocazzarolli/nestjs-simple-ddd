@@ -1,8 +1,11 @@
 # Caso di studio — Introdurre CQRS in un modulo DDD NestJS
 
 Documento di approccio e piano di modifica per il modulo `src/modules/invoice/`.
-**Nessuna riga di codice è stata modificata**: gli snippet qui riportati sono la forma
-proposta, non lo stato attuale del repository.
+
+> **Stato: implementato** sul branch `feat/cqrs-invoice-read-model`, nei quattro commit
+> descritti in §8. Il piano è stato seguito senza deviazioni tranne le due scelte esplicite
+> registrate in §8bis. Gli snippet restano indicativi: il codice a repo è la fonte di
+> verità, questo documento è il razionale.
 
 Obiettivo didattico: usare l'aggiunta di **una nuova lettura** (`GET /invoices/summary`)
 come pretesto per rendere visibile la separazione tra **command side** e **query side**,
@@ -620,6 +623,30 @@ di lettura + summary e lasciando `InvoiceService` in vita per gli endpoint esist
 ottiene la feature e un esempio funzionante di query side, al prezzo di uno stato ibrido —
 accettabile solo se il commit 1 è già schedulato. Uno stato ibrido permanente insegna la
 cosa sbagliata, e per un caso di studio questo è il difetto peggiore.
+
+---
+
+## 8bis. Come è andata, in pratica
+
+Le due scelte lasciate aperte dal documento, risolte in fase di implementazione:
+
+- **§5.7 → opzione A.** I DTO decorati vivono in `presentation/dto/`; l'application layer non
+  dipende da `class-validator`. Il controller mappa il DTO nel command/query object. Il costo
+  reale è una mappatura di due righe per endpoint.
+- **§5.6 → l'errore di dominio resta sul read side.** `GetInvoiceHandler` continua a lanciare
+  `InvoiceNotFoundError`, con il razionale scritto in un commento nel file, così la decisione
+  non va persa quando il read model diventerà asincrono.
+
+Un dettaglio emerso solo scrivendo il codice: `CreateInvoiceHandler` costruisce la
+`InvoiceView` **inline** invece di passare dalla port di lettura. Rileggere ciò che si è
+appena scritto sarebbe un round-trip inutile, e il write side ha già l'aggregato in mano. È
+l'unica mappatura entità → view che non sta nell'adapter, ed è annotata come tale.
+
+Verifica del guardrail di §5.8a: spostando `@Get('summary')` sotto `@Get(':id')` la suite e2e
+fallisce con 7 test rossi, incluso quello dedicato. Il presidio funziona.
+
+Numeri finali: 33 unit test (da 20), 13 e2e (da 6), i sei e2e preesistenti verdi **senza
+modifiche** — il criterio di §6 è soddisfatto.
 
 ---
 
